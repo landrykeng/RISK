@@ -42,19 +42,15 @@ st.sidebar.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-section = st.sidebar.radio(
-    "Aller à la section :",
-    ["Partie 1: Actif Unique",
-     "Partie 2: Portefeuille 2 Actifs",
-     "Partie 3: Données Réelles",
-     "Partie 4: Synthèse"]
-)
-
+section= st.tabs(["**Partie 1: Actif Unique**",
+     "**Partie 2: Portefeuille 2 Actifs**",
+     "**Partie 3: Données Réelles**",
+     "**Partie 4: Synthèse**"])
 # ============================================================================
 # PARTIE 1 : ACTIF UNIQUE (Modèle Quadrinomial)
 # ============================================================================
 
-if section == "Partie 1: Actif Unique":
+with section[0]:
     st.header("Partie 1 : Modèle Quadrinomial pour un Actif Unique")
     
     # Paramètres du modèle
@@ -462,7 +458,7 @@ Au-delà de 50-100 jours, on observe un phénomène crucial : l'intervalle de co
 # PARTIE 2 : PORTEFEUILLE DE DEUX ACTIFS
 # ============================================================================
 
-elif section == "Partie 2: Portefeuille 2 Actifs":
+with section[1]:
     st.header("Partie 2 : Portefeuille de deux actifs avec corrélation")
     
     st.subheader("2.1 Modèle de dépendance")
@@ -719,7 +715,7 @@ elif section == "Partie 2: Portefeuille 2 Actifs":
 # PARTIE 3 : DONNÉES RÉELLES
 # ============================================================================
 
-elif section == "Partie 3: Données Réelles":
+with section[2]:
     st.header("Partie 3 : Application sur données réelles de marché")
     
     st.info("""
@@ -1042,7 +1038,7 @@ elif section == "Partie 3: Données Réelles":
 # PARTIE 4 : SYNTHÈSE
 # ============================================================================
 
-elif section == "Partie 4: Synthèse":
+with section[3]:
     st.header("Partie 4 : Synthèse et analyses critiques")
     
     st.markdown("""
