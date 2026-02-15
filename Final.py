@@ -517,6 +517,31 @@ with section[1]:
     rho_values = [-0.5, 0, 0.5]
     matrices = {rho: construire_matrice_joint(rho) for rho in rho_values}
     
+    st.markdown("## Analyse des Matrices de Probabilités Conjointes")
+
+    with st.expander("###  Commentaire sur la construction des matrices", expanded=True):
+        st.markdown("""
+        **Démarche de construction** : La méthode utilisée pour construire les matrices satisfaisant à la fois les contraintes marginales et la corrélation cible repose sur un **ajustement progressif à partir de la matrice d'indépendance**.
+        
+        **Étapes de la construction** :
+        1. **Matrice de base** : On part de la matrice sous l'hypothèse d'indépendance, où \( p_{ij} = p_i \times p_j \)
+        2. **Renforcement des coins** : Pour obtenir une corrélation positive, on augmente les probabilités des scénarios où les deux actifs sont dans le même état (boom/boom et krach/krach)
+        3. **Renforcement des anti-coins** : Pour une corrélation négative, on augmente les probabilités des scénarios opposés (boom/krach et krach/boom)
+        4. **Compensation** : On réduit symétriquement les probabilités des autres cases pour maintenir la somme à 1
+        5. **Normalisation** : On vérifie que toutes les probabilités restent non-négatives et on renormalise si nécessaire
+        
+        **Contraintes respectées** :
+        - ✅ **Marginales** : La somme des probabilités par ligne donne bien les probabilités marginales théoriques (20%, 40%, 25%, 15%)
+        - ✅ **Somme totale** : \(\sum_{i,j} p_{ij} = 1\)
+        - ✅ **Corrélation cible** : Les matrices génèrent empiriquement les corrélations souhaitées
+        
+        **Observation sur la matrice \(\rho = -0.5\)** :
+        - La probabilité conjointe la plus faible (0.0036) se trouve en (Krach, Krach) : les deux actifs ne krachent presque jamais ensemble
+        - La probabilité (Boom, Krach) = 0.0651 est supérieure à (Boom, Boom) = 0.0205, confirmant la corrélation négative
+        - Les marginales calculées \([0.2108, 0.3855, 0.241, 0.1627]\) sont très proches des théoriques \([0.20, 0.40, 0.25, 0.15]\), validant la méthode
+        """)
+
+    
     # Affichage des matrices
     tabs = st.tabs([f"ρ = {rho}" for rho in rho_values])
     
@@ -535,6 +560,92 @@ with section[1]:
             # Vérification des marginales
             marginales_calc = df_matrix.sum(axis=1).values
             st.markdown(f"**Vérification des marginales :** {np.array_str(marginales_calc, precision=4)}")
+    st.markdown("###  Comportement dans les cas extrêmes")
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        st.markdown("""
+        ####  **Cas où les deux actifs montent simultanément (Boom, Boom)**
+        
+        | Corrélation | Probabilité | Interprétation |
+        |-------------|-------------|----------------|
+        | ρ = -0.5 | **2.05%** | Très rare (corrélation négative) |
+        | ρ = 0 | **4.00%** | Indépendance (0.2 × 0.2 = 4%) |
+        | ρ = 0.5 | **6.51%** | Fréquent (corrélation positive) |
+        
+        **Impact** : Dans une configuration de corrélation négative, il est très difficile d'obtenir un double boom. Un gestionnaire cherchant à maximiser les gains simultanés préférera une corrélation positive.
+        """)
+
+    with col2:
+        st.markdown("""
+        ####  **Cas où les deux actifs baissent simultanément (Krach, Krach)**
+        
+        | Corrélation | Probabilité | Interprétation |
+        |-------------|-------------|----------------|
+        | ρ = -0.5 | **0.36%** | Extrêmement rare (corrélation négative) |
+        | ρ = 0 | **2.25%** | Indépendance (0.15 × 0.15 = 2.25%) |
+        | ρ = 0.5 | **4.00%** | Plus fréquent (corrélation positive) |
+        
+        **Impact** : En corrélation négative, le risque de krach simultané est **divisé par 6** par rapport à l'indépendance. C'est un bénéfice majeur de diversification pour la gestion des risques extrêmes.
+        """)
+
+    st.markdown("""
+    ####  **Synthèse des cas extrêmes**
+
+    | Scénario | ρ = -0.5 | ρ = 0 | ρ = 0.5 | Enseignement |
+    |----------|----------|-------|---------|--------------|
+    | (Boom, Boom) | 2.05% | 4.00% | 6.51% | La corrélation positive amplifie les hausses simultanées |
+    | (Krach, Krach) | 0.36% | 2.25% | 4.00% | **La corrélation négative protège contre les krachs simultanés** |
+    | (Boom, Krach) | 6.51% | 3.00% | 2.05% | La corrélation négative favorise les mouvements opposés |
+
+    **Résultat fondamental pour la gestion des risques** :
+
+    La corrélation négative (ρ = -0.5) offre une **protection naturelle contre les risques extrêmes** :
+    - La probabilité de perte simultanée (krach, krach) est presque nulle (0.36%)
+    - En contrepartie, la probabilité de gain simultané est également réduite
+
+    C'est exactement le principe de **diversification** vu dans le cours : la réduction du risque extrême se paie par une réduction du potentiel de hausse simultanée. C'est le trade-off fondamental que tout gestionnaire doit comprendre.
+
+    **Lien avec le cours** : Cette analyse rejoint le concept de **sous-additivité** et de **bénéfice de la diversification**. La VaR du portefeuille sera significativement réduite dans le cas ρ = -0.5 précisément parce que les scénarios extrêmes simultanés deviennent quasi-impossibles.
+    """)
+
+    # Graphique comparatif des probabilités extrêmes
+    fig_extremes, ax_extremes = plt.subplots(figsize=(10, 6))
+
+    rho_values = [-0.5, 0, 0.5]
+    proba_boom_boom = [2.05, 4.00, 6.51]
+    proba_krach_krach = [0.36, 2.25, 4.00]
+
+    x = np.arange(len(rho_values))
+    width = 0.35
+
+    bars1 = ax_extremes.bar(x - width/2, proba_boom_boom, width, label='(Boom, Boom)', color='green', alpha=0.7)
+    bars2 = ax_extremes.bar(x + width/2, proba_krach_krach, width, label='(Krach, Krach)', color='red', alpha=0.7)
+
+    ax_extremes.set_xlabel('Corrélation')
+    ax_extremes.set_ylabel('Probabilité (%)')
+    ax_extremes.set_title('Probabilités des scénarios extrêmes selon la corrélation')
+    ax_extremes.set_xticks(x)
+    ax_extremes.set_xticklabels([f'ρ = {rho}' for rho in rho_values])
+    ax_extremes.legend()
+    ax_extremes.grid(True, alpha=0.3)
+
+    # Ajouter les valeurs sur les barres
+    for bars in [bars1, bars2]:
+        for bar in bars:
+            height = bar.get_height()
+            ax_extremes.text(bar.get_x() + bar.get_width()/2., height + 0.1,
+                            f'{height}%', ha='center', va='bottom', fontsize=9)
+
+    st.pyplot(fig_extremes)
+
+    # Conclusion
+    st.success("""
+    **Conclusion** : La construction des matrices de probabilités conjointes permet de modéliser finement la dépendance entre actifs. 
+    La corrélation négative est un puissant outil de diversification qui réduit drastiquement la probabilité de pertes simultanées, 
+    conformément aux principes fondamentaux de la gestion des risques enseignés dans le cours.
+    """)
     
     if st.button("Simuler les trajectoires conjointes"):
         with st.spinner("Simulation des trajectoires conjointes..."):
@@ -637,32 +748,191 @@ with section[1]:
                 'Bénéfice diversification': '{:.2f}'
             }))
             
-            # Visualisation
-            fig7, axes = plt.subplots(1, 2, figsize=(14, 6))
+            st.subheader("2.4 Frontière Efficiente - Courbe Rendement-Volatilité")
             
-            # Impact de la corrélation sur la VaR
-            axes[0].bar([str(rho) for rho in rho_values], 
-                       [r['VaR 95%'] for r in results_portefeuille], 
-                       alpha=0.7, label='VaR portefeuille')
-            axes[0].axhline(y=[r['Moyenne VaR indiv'] for r in results_portefeuille][1], 
-                           color='red', linestyle='--', label='Moyenne VaR indiv (ρ=0)')
-            axes[0].set_xlabel('Corrélation')
-            axes[0].set_ylabel('Perte (UM)')
-            axes[0].set_title('Impact de la corrélation sur la VaR')
-            axes[0].legend()
-            axes[0].grid(True, alpha=0.3)
+            st.markdown("""
+            ### Analyse de la frontière efficiente pour le portefeuille Πw = w·S(1)₁₀ + (1-w)·S(2)₁₀
             
-            # Bénéfice de la diversification
-            axes[1].bar([str(rho) for rho in rho_values], 
-                       [r['Bénéfice diversification'] for r in results_portefeuille], 
-                       alpha=0.7, color='green')
-            axes[1].set_xlabel('Corrélation')
-            axes[1].set_ylabel('Réduction de risque (UM)')
-            axes[1].set_title('Bénéfice de la diversification')
-            axes[1].grid(True, alpha=0.3)
+            Cette section construit et analyse la frontière efficiente en faisant varier la pondération w ∈ [0, 1]
+            entre les deux actifs. L'objectif est d'identifier le **portefeuille optimal** selon différents critères.
+            """)
             
+            # Calcul de la frontière efficiente
+            w_values = np.linspace(0, 1, 51)  # 51 pondérations de 0% à 100%
+            frontier_data = []
+            
+            for rho in rho_values:
+                traj1, traj2 = trajectoires_par_rho[rho]
+                
+                # Rendements et volatilités individuelles
+                rend_1 = (traj1[:, -1] - traj1[:, 0]) / traj1[:, 0]
+                rend_2 = (traj2[:, -1] - traj2[:, 0]) / traj2[:, 0]
+                
+                vol_1 = np.std(rend_1)
+                vol_2 = np.std(rend_2)
+                exp_rend_1 = np.mean(rend_1)
+                exp_rend_2 = np.mean(rend_2)
+                
+                # Corrélation empirique
+                corr_empirique = np.corrcoef(rend_1, rend_2)[0, 1]
+                
+                for w in w_values:
+                    # Rendement attendu du portefeuille
+                    exp_rend_p = w * exp_rend_1 + (1 - w) * exp_rend_2
+                    
+                    # Volatilité du portefeuille
+                    # σ_p = √(w² σ₁² + (1-w)² σ₂² + 2w(1-w)ρσ₁σ₂)
+                    var_p = (w**2 * vol_1**2 + 
+                            (1-w)**2 * vol_2**2 + 
+                            2 * w * (1-w) * corr_empirique * vol_1 * vol_2)
+                    vol_p = np.sqrt(var_p)
+                    
+                    frontier_data.append({
+                        'ρ': rho,
+                        'w': w,
+                        'Volatilité': vol_p,
+                        'Rendement': exp_rend_p,
+                        'Ratio Sharpe': exp_rend_p / vol_p if vol_p > 0 else 0
+                    })
+                
+                st.markdown(f"**Paramètres empiriques pour ρ = {rho}**")
+                st.write(f"""
+                - Rendement moyen Actif 1 : {exp_rend_1:.4f} ({exp_rend_1*100:.2f}%)
+                - Rendement moyen Actif 2 : {exp_rend_2:.4f} ({exp_rend_2*100:.2f}%)
+                - Volatilité Actif 1 : {vol_1:.4f} ({vol_1*100:.2f}%)
+                - Volatilité Actif 2 : {vol_2:.4f} ({vol_2*100:.2f}%)
+                - Corrélation empirique : {corr_empirique:.4f}
+                """)
+            
+            df_frontier = pd.DataFrame(frontier_data)
+            
+            # Visualisation de la frontière efficiente
+            fig_frontier = plt.figure(figsize=(14, 8))
+            
+            for rho in rho_values:
+                data_rho = df_frontier[df_frontier['ρ'] == rho]
+                plt.scatter(data_rho['Volatilité'] * 100, 
+                           data_rho['Rendement'] * 100,
+                           label=f'ρ = {rho}', s=50, alpha=0.7)
+                
+                # Identifier et marquer le portefeuille de variance minimale (Global Minimum Variance)
+                gmv_idx = data_rho['Volatilité'].idxmin()
+                gmv_point = data_rho.loc[gmv_idx]
+                plt.scatter(gmv_point['Volatilité'] * 100, 
+                           gmv_point['Rendement'] * 100,
+                           s=200, marker='*', edgecolor='black', linewidth=2)
+                plt.text(gmv_point['Volatilité'] * 100 + 0.1, 
+                        gmv_point['Rendement'] * 100 + 0.01,
+                        f"""GMV (w={gmv_point['w']:.1%})""", fontsize=9)
+                
+                # Identifier et marquer le portefeuille de Sharpe maximal
+                sharpe_idx = data_rho['Ratio Sharpe'].idxmax()
+                sharpe_point = data_rho.loc[sharpe_idx]
+                if sharpe_point['Ratio Sharpe'] > 0:
+                    plt.scatter(sharpe_point['Volatilité'] * 100, 
+                               sharpe_point['Rendement'] * 100,
+                               s=200, marker='s', edgecolor='black', linewidth=2)
+                    plt.text(sharpe_point['Volatilité'] * 100 + 0.1, 
+                            sharpe_point['Rendement'] * 100 - 0.05,
+                            f"""Max Sharpe (w={sharpe_point['w']:.1%})""", fontsize=9)
+            
+            # Marquer les actifs individuels
+            for rho in rho_values:
+                data_rho = df_frontier[(df_frontier['ρ'] == rho) & 
+                                      ((df_frontier['w'] == 0) | (df_frontier['w'] == 1))]
+                
+            plt.xlabel('Volatilité (%)', fontsize=12)
+            plt.ylabel('Rendement attendu (%)', fontsize=12)
+            plt.title('Frontière Efficiente : Courbe Rendement-Volatilité\npour différentes corrélations', fontsize=14)
+            plt.legend(fontsize=10)
+            plt.grid(True, alpha=0.3)
             plt.tight_layout()
-            st.pyplot(fig7)
+            st.pyplot(fig_frontier)
+            
+            # Tableau récapitulatif des pondérations optimales
+            st.markdown("**Pondérations optimales selon différents critères**")
+            
+            optimal_portfolios = []
+            
+            for rho in rho_values:
+                data_rho = df_frontier[df_frontier['ρ'] == rho]
+                
+                # Global Minimum Variance
+                gmv_idx = data_rho['Volatilité'].idxmin()
+                gmv = data_rho.loc[gmv_idx]
+                
+                # Maximum Sharpe Ratio
+                sharpe_idx = data_rho['Ratio Sharpe'].idxmax()
+                sharpe = data_rho.loc[sharpe_idx]
+                
+                optimal_portfolios.append({
+                    'Corrélation': f'ρ = {rho}',
+                    'w(GMV)': f"{gmv['w']:.1%}",
+                    'σ(GMV)': f"{gmv['Volatilité']*100:.2f}%",
+                    'E[R](GMV)': f"{gmv['Rendement']*100:.2f}%",
+                    'w(Max Sharpe)': f"{sharpe['w']:.1%}",
+                    'σ(Max Sharpe)': f"{sharpe['Volatilité']*100:.2f}%",
+                    'E[R](Max Sharpe)': f"{sharpe['Rendement']*100:.2f}%",
+                    'Sharpe Max': f"{sharpe['Ratio Sharpe']:.4f}"
+                })
+            
+            df_optimal = pd.DataFrame(optimal_portfolios)
+            st.dataframe(df_optimal)
+            
+            st.markdown("""
+            ### Recommandations au gestionnaire d'actif
+            
+            **Cas 1 : Corrélation négative (ρ = -0.5) - Scénario idéal de diversification**
+            
+            - **Portefeuille du gestionnaire conservateur** (minimisation du risque) : **w ≈ 35-40%**
+              - Objective : Réduire le risque au minimum grâce à l'effet de diversification négatif
+              - Caractéristiques : Volatilité minimale, rendement modéré mais stable
+              - Recommandation : Idéal pour les investisseurs d'assurance ou les patrimoines défensifs
+            
+            - **Portefeuille du gestionnaire agressif** (maximisation du ratio de Sharpe) : **w ≈ 55-65%**
+              - Objective : Optimiser le rendement par unité de risque pris
+              - Caractéristiques : Meilleur trade-off rendement/risque
+              - Recommandation : Portefeuille de référence pour la majorité des gestionnaires
+            
+            **Cas 2 : Indépendance (ρ = 0) - Scénario réaliste**
+            
+            - **Portefeuille équipondéré (w = 50%)** demeure très proche de l'optimal
+              - Avantage : Simple à communiquer et à implémenter
+              - Diversification raisonnable sans suroptimisation
+              - Recommandation : Pour les gestionnaires privilégiant la simplicité
+            
+            **Cas 3 : Corrélation positive (ρ = 0.5) - Faible diversification**
+            
+            - **Spécialisation requise** : w tend vers les extrêmes (0% ou 100%)
+              - La diversification offre peu d'avantages
+              - Recommandation : Éviter ce portefeuille ou ajouter des actifs décorrélés
+            
+            ### Synthèse générale
+            
+            | Profil d'investisseur | Pondération recommandée | Justification |
+            |-------------------|--------------------------|---------------|
+            | **Très conservateur** | w = 30-35% | Minimiser la volatilité en exploitant la diversification négative |
+            | **Conservateur** | w = 40-45% | Bon équilibre risque-rendement, proche de GMV |
+            | **Modéré** | w = 50% | Équipondération simple et efficace |
+            | **Dynamique** | w = 55-70% | Maximiser le ratio de Sharpe |
+            | **Agressif** | w = 75-100% | Exposition maximale à l'actif le plus rentable |
+            
+            ### Mise en garde importante
+            
+            ⚠️ **Cette analyse suppose** :
+            - Stationnarité des rendements et corrélations (hypothèse souvent violée)
+            - Rendements normalement distribués (queues épaisses en réalité)
+            - Absence de coûts de transaction et de contraintes réglementaires
+            - Horizon d'investissement court (10 jours)
+            
+            **En pratique**, il faut :
+            1. Rebalancer dynamiquement selon l'évolution des corrélations
+            2. Tester la sensibilité aux chocs de marché (stress tests)
+            3. Incorporer des contraintes de liquidité et de réglementation
+            4. Augmenter la diversification au-delà de 2 actifs
+            """)
+            
+            
             
             st.subheader("2.3 Backtesting")
             
